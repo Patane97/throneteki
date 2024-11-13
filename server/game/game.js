@@ -773,7 +773,7 @@ class Game extends EventEmitter {
         }
 
         if (!player.isSpectator()) {
-            if (this.chatCommands.executeCommand(player, args[0], args)) {
+            if (this.chatCommands.executeCommand(player, args[0], args.slice(1))) {
                 return;
             }
 

@@ -3,6 +3,43 @@ import CancelChallengePrompt from './gamesteps/CancelChallengePrompt.js';
 import Deck from './Deck.js';
 import RematchPrompt from './gamesteps/RematchPrompt.js';
 import { Tokens } from './Constants/index.js';
+import Factions from './Factions.js';
+
+const commands = [
+    {
+        name: 'Add faction affiliation',
+        description: 'Adds the provided faction affiliation to a card',
+        command: 'add-faction',
+        aliases: ['add-affiliation'],
+        args: {
+            faction: {
+                options: Factions.map((f) => f.value),
+                required: true
+            }
+        },
+        func: (context, faction) => {
+            context.game.promptForSelect(context.player, {
+                activePromptTitle: 'Select a card',
+                waitingPromptTitle: 'Waiting for opponent to add faction to card',
+                cardCondition: (card) =>
+                    card.location === 'play area' && card.controller === context.player,
+                onSelect: (p, card) => {
+                    card.addFaction(faction);
+
+                    context.game.addAlert(
+                        'danger',
+                        '{0} uses the /{1} command to add the {2} faction to {3}',
+                        p,
+                        context.command,
+                        faction,
+                        card
+                    );
+                    return true;
+                }
+            });
+        }
+    }
+];
 
 class ChatCommands {
     constructor(game) {
@@ -49,6 +86,16 @@ class ChatCommands {
     }
 
     executeCommand(player, command, args) {
+        for (const cmd of commands) {
+            if (command === cmd.command || cmd.aliases.includes(command)) {
+                const context = {
+                    game: this.game,
+                    player,
+                    command
+                };
+                return cmd.func(context, ...args);
+            }
+        }
         if (!player || !this.commands[command]) {
             return false;
         }
