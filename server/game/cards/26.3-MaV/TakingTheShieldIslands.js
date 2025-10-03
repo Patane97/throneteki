@@ -36,17 +36,18 @@ class TakingTheShieldIslands extends DrawCard {
     }
 
     onCardsSelected(player, cards, context) {
-        const placeAction = (card) =>
-            GameActions.placeCard({
-                card,
-                player,
-                location: 'draw deck'
-            });
-        if (Array.isArray(cards)) {
-            this.game.resolveGameAction(GameActions.simultaneously(cards.map(placeAction)));
-        } else {
-            placeAction(cards);
-        }
+        const placing = Array.isArray(cards) ? cards : [cards];
+        this.game.resolveGameAction(
+            GameActions.simultaneously(
+                placing.map((card) =>
+                    GameActions.placeCard({
+                        card,
+                        player,
+                        location: 'draw deck'
+                    })
+                )
+            )
+        );
         this.game.addMessage(
             "{0} then uses {1} to place {2} card(s) on top of {3}'s deck",
             player,
