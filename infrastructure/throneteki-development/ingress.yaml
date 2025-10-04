@@ -1,8 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-    name: throneteki-lobby-dev
-    namespace: throneteki-dev
+    name: throneteki-lobby
+    namespace: throneteki-development
     annotations:
         kubernetes.io/ingress.class: 'traefik'
         cert-manager.io/cluster-issuer: 'letsencrypt-prod'
@@ -32,4 +32,4 @@ spec:
         - hosts:
               - dev.throneteki.net
               - dev.theironthrone.net
-          secretName: throneteki-lobby-dev-tls
+          secretName: throneteki-lobby-development-tls
