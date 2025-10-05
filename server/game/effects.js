@@ -1204,6 +1204,40 @@ const Effects = {
             }
         };
     },
+    contributeDynamicStrength: function (card, calculate) {
+        let contribution = null;
+        return {
+            targetType: 'player',
+            apply: function (player, context) {
+                let challenge = context.game.currentChallenge;
+                if (!challenge) {
+                    return;
+                }
+
+                context.contributeDynamicStrength = context.contributeDynamicStrength || {};
+                context.contributeDynamicStrength[card.uuid] = calculate(card, context) || 0;
+                let value = context.contributeDynamicStrength[card.uuid];
+
+                contribution = new ValueContribution(player, card, value);
+                challenge.addContribution(contribution);
+            },
+            reapply: function (player, context) {
+                let newStrength = calculate(card, context) || 0;
+                context.contributeDynamicStrength[card.uuid] = newStrength;
+                contribution.value = newStrength;
+            },
+            unapply: function (player, context) {
+                let challenge = context.game.currentChallenge;
+                if (!challenge) {
+                    return;
+                }
+
+                challenge.removeContribution(contribution);
+                delete context.contributeDynamicStrength[card.uuid];
+            },
+            isStateDependent: true
+        };
+    },
     setAttackerMaximum: function (value) {
         return {
             targetType: 'player',

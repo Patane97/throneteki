@@ -8,7 +8,7 @@ class GreyGalley extends DrawCard {
         this.persistentEffect({
             condition: () => this.controller.anyCardsInPlay({ type: 'character', defending: true }),
             targetController: 'current',
-            effect: ability.effects.contributeStrength(this, this.getAmount())
+            effect: ability.effects.contributeDynamicStrength(this, () => this.getAmount())
         });
     }
 
