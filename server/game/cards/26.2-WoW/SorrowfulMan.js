@@ -19,6 +19,7 @@ class SorrowfulMan extends DrawCard {
                 singleController: true,
                 cardCondition: (card, context) =>
                     card.controller !== this.controller &&
+                    card.getType() === 'character' &&
                     ['discard pile', 'dead pile']
                         .filter(
                             (location) =>
