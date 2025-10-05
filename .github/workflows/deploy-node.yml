@@ -1,20 +1,88 @@
-name: Deploy Node
+name: Deploy Game Nodes
 on:
     workflow_dispatch:
         inputs:
             environment:
                 type: environment
                 description: Select the environment
-                default: ProductionNode1
+                default: Production
+
 jobs:
     deploy:
         runs-on: self-hosted
         environment: ${{ inputs.environment }}
         steps:
-            - name: Pull latest node image
-              run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/throneteki-node
-            - name: Stop and remove node image
-              continue-on-error: true
-              run: docker stop ${{ vars.CONTAINER_NAME }} && docker rm ${{ vars.CONTAINER_NAME }}
-            - name: Run new node image
-              run: docker run --restart unless-stopped -d -p ${{ vars.PORT }}:80 --network ${{ vars.NETWORK_NAME }} -v ${{ vars.LOG_PATH }}:/app/node/server/logs --name ${{ vars.CONTAINER_NAME }} --env NODE_CONFIG='{"env":"production","sentryDsn":"${{ secrets.SENTRY_DSN }}","redisUrl":"${{ secrets.REDIS_URL }}","secret":"${{ secrets.SECRET }}","nodeIdentity":"${{ vars.NODE_NAME }}","socketioPort":80,"host":"${{ vars.HOSTNAME }}", "origin":"http://${{ vars.HOSTNAME }}:* https://${{ vars.HOSTNAME }}:*"}' ${{ secrets.DOCKERHUB_USERNAME }}/throneteki-node:latest
+            - name: Checkout repo
+              uses: actions/checkout@v3
+
+            - name: Deploy Game Nodes
+              run: |
+                  # Determine namespace and replicas based on environment
+                  ENV=$(echo "${{ github.event.inputs.environment }}" | tr '[:upper:]' '[:lower:]')
+
+                  if [ "${{ github.event.inputs.environment }}" = "Production" ]; then
+                    NAMESPACE="throneteki"
+                    REPLICAS=2
+                    ENV_SUBDOMAIN="production"
+                  elif [ "${{ github.event.inputs.environment }}" = "Development" ]; then
+                    NAMESPACE="throneteki-development"
+                    REPLICAS=1
+                    ENV_SUBDOMAIN="dev"
+                  elif [ "${{ github.event.inputs.environment }}" = "Playtesting" ]; then
+                    NAMESPACE="throneteki-playtesting"
+                    REPLICAS=1
+                    ENV_SUBDOMAIN="playtesting"
+                  else
+                    NAMESPACE="throneteki-$ENV"
+                    REPLICAS=1
+                    ENV_SUBDOMAIN="$ENV"
+                  fi
+
+                  echo "Deploying to namespace: $NAMESPACE with $REPLICAS replicas for environment: $ENV_SUBDOMAIN"
+
+                  # Generate a unique deployment timestamp to force pod updates
+                  DEPLOY_TIME=$(date +%s)
+                  echo "Deployment timestamp: $DEPLOY_TIME"
+
+                  # Create values file with secrets
+                  cat > /tmp/node-secrets.yaml <<EOF
+                  nodeConfig:
+                    env: "${{ vars.NODE_ENV || 'production' }}"
+                    instance:
+                      type: "$ENV"
+                    sentryDsn: "${{ secrets.SENTRY_DSN }}"
+                    dbPath: "${{ secrets.DB_PATH }}"
+                    redisPrefix: "$ENV"
+                    redisUrl: "${{ secrets.REDIS_URL }}"
+                    secret: "${{ secrets.SECRET }}"
+                    hmacSecret: "${{ secrets.HMAC_SECRET }}"
+                    lobbyUrl: "${{ vars.LOBBY_URL }}"
+                    socketioPort: 80
+                  EOF
+
+                  # Deploy with Helm - this updates the StatefulSet spec
+                  helm upgrade --install game-node ./infrastructure/node \
+                    --set namespace=$NAMESPACE \
+                    --set replicaCount=$REPLICAS \
+                    --set environment=$ENV_SUBDOMAIN \
+                    --set deployTime=$DEPLOY_TIME \
+                    -f /tmp/node-secrets.yaml \
+                    -n $NAMESPACE
+
+                  # Clean up secrets file
+                  rm /tmp/node-secrets.yaml
+
+                  echo "Triggering rolling update by deleting pods one by one..."
+
+                  # Delete and wait for each pod to be replaced
+                  for i in $(seq 0 $((REPLICAS - 1))); do
+                    echo "Deleting node-$i to trigger recreation with new spec..."
+                    kubectl delete pod node-$i -n $NAMESPACE
+                    
+                    echo "Waiting for node-$i to be recreated and ready..."
+                    kubectl wait --for=condition=ready pod/node-$i -n $NAMESPACE --timeout=120m
+                    
+                    echo "node-$i updated successfully"
+                  done
+
+                  echo "All pods updated successfully"

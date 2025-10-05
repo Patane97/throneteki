@@ -13,6 +13,7 @@ class GameSocket extends EventEmitter {
         this.listenAddress = listenAddress;
         this.protocol = protocol;
         this.version = version;
+        this.isDraining = false;
 
         this.nodeName = process.env.SERVER || configService.getValue('nodeIdentity');
 
@@ -62,17 +63,32 @@ class GameSocket extends EventEmitter {
     }
 
     onGameSync(games) {
-        this.send('HELLO', {
-            maxGames: config.maxGames,
+        const helloData = {
+            maxGames: this.isDraining ? 0 : config.maxGames, // Report 0 capacity when draining
             version: this.version,
-            address: this.listenAddress,
             port:
                 process.env.NODE_ENV === 'production'
                     ? 80
                     : process.env.PORT || config.socketioPort,
             protocol: this.protocol,
-            games: games
-        });
+            games: games,
+            draining: this.isDraining
+        };
+
+        if (this.listenAddress) {
+            helloData.address = this.listenAddress;
+        }
+
+        this.send('HELLO', helloData);
+    }
+
+    setDraining(draining) {
+        if (this.isDraining !== draining) {
+            this.isDraining = draining;
+            logger.info(`Node draining status changed to: ${draining}`);
+
+            this.emit('onGameSync', this.onGameSync.bind(this));
+        }
     }
 
     onMessage(channel, msg) {

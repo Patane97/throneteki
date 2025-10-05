@@ -1,0 +1,14 @@
+namespace: throneteki-development
+environment: development
+
+image:
+    repository: cryogen/throneteki-lobby
+    tag: latest
+
+# Deployment timestamp - injected by CI/CD to force pod updates
+deployTime: '0'
+
+# Node configuration - should be passed from GitHub secrets during deployment
+nodeConfig: {}
+
+resources: {}

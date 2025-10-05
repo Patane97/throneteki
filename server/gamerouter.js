@@ -63,7 +63,13 @@ class GameRouter extends EventEmitter {
         var returnedWorker = undefined;
 
         for (const worker of Object.values(this.workers)) {
-            if (worker.numGames >= worker.maxGames || worker.disabled || worker.disconnected) {
+            // Skip workers that are at capacity, disabled, disconnected, or draining
+            if (
+                worker.numGames >= worker.maxGames ||
+                worker.disabled ||
+                worker.disconnected ||
+                worker.draining
+            ) {
                 continue;
             }
 
@@ -84,8 +90,11 @@ class GameRouter extends EventEmitter {
                     ? 'disconnected'
                     : worker.disabled
                       ? 'disabled'
-                      : 'active',
-                version: worker.version
+                      : worker.draining
+                        ? 'draining'
+                        : 'active',
+                version: worker.version,
+                draining: worker.draining || false
             };
         });
     }
@@ -267,7 +276,7 @@ class GameRouter extends EventEmitter {
         }
 
         try {
-            this.publisher.publish(channel, objectStr);
+            this.publisher.publish(`${this.keyPrefix}:${channel}`, objectStr);
         } catch (err) {
             logger.error(err);
         }
