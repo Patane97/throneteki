@@ -1,12 +1,14 @@
+import { Flags } from '../Constants/Flags.js';
 import UiPrompt from './uiprompt.js';
 
 class AttachmentPrompt extends UiPrompt {
-    constructor(game, player, attachmentCard, playingType, targets) {
+    constructor(game, player, attachmentCard, playingType, targets, kneeled) {
         super(game);
         this.player = player;
         this.attachmentCard = attachmentCard;
         this.playingType = playingType;
         this.targets = targets || (() => true);
+        this.kneeled = kneeled;
     }
 
     continue() {
@@ -19,6 +21,8 @@ class AttachmentPrompt extends UiPrompt {
             onSelect: (player, card) => {
                 let targetPlayer = card.controller;
                 targetPlayer.attach(player, this.attachmentCard, card, this.playingType);
+                this.attachmentCard.kneeled =
+                    !!card.hasFlag(Flags.card.entersPlayKneeled) || !!this.kneeled;
                 return true;
             }
         });

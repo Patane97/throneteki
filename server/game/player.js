@@ -678,7 +678,7 @@ class Player extends Spectator {
         var dupeCard = this.getDuplicateInPlay(card);
 
         if (card.getPrintedType() === 'attachment' && playingType !== 'setup' && !dupeCard) {
-            this.promptForAttachment(card, playingType, options.attachmentTargets);
+            this.promptForAttachment(card, playingType, options.attachmentTargets, options.kneeled);
             return;
         }
 
@@ -955,9 +955,11 @@ class Player extends Spectator {
         }
     }
 
-    promptForAttachment(card, playingType, targets) {
+    promptForAttachment(card, playingType, targets, kneeled) {
         // TODO: Really want to move this out of here.
-        this.game.queueStep(new AttachmentPrompt(this.game, this, card, playingType, targets));
+        this.game.queueStep(
+            new AttachmentPrompt(this.game, this, card, playingType, targets, kneeled)
+        );
     }
 
     resetChallengesPerformed() {
