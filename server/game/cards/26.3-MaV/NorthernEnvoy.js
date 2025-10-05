@@ -50,7 +50,8 @@ class NorthernEnvoy extends DrawCard {
                         gameAction: GameActions.shuffle((context) => ({
                             player: context.parentContext.opponent
                         }))
-                    })
+                    }),
+                    context
                 );
             }
         });

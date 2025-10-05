@@ -28,7 +28,7 @@ class TheWardenOfTheEast extends DrawCard {
                 format: '{player} uses {source} to have {parent} gain 1 power',
                 args: { parent: () => this.parent }
             },
-            gameAction: GameActions.gainPower({ card: this.parent, amount: 1 })
+            gameAction: GameActions.gainPower(() => ({ card: this.parent, amount: 1 }))
         });
     }
 }
