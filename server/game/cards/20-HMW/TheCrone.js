@@ -15,7 +15,8 @@ class TheCrone extends PlotCard {
                 ability.effects.cannotBeRemovedFromGame(),
                 ability.effects.cannotBeReturnedToHand(),
                 ability.effects.cannotBeSacrificed(),
-                ability.effects.cannotBeReturnedToDeck()
+                ability.effects.cannotBeReturnedToDeck(),
+                ability.effects.cannotBePlaced()
             ]
         });
     }

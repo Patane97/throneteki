@@ -8,12 +8,12 @@ class SchemingSepton extends DrawCard {
             phase: 'challenge',
             limit: ability.limit.perPhase(1),
             message: '{player} uses {source} to draw 1 card and gain 2 gold',
-            gameAction: GameActions.simultaneously(
+            gameAction: GameActions.simultaneously([
                 GameActions.drawCards((context) => ({ player: context.player, amount: 1 })),
                 GameActions.gainGold((context) => ({ player: context.player, amount: 2 }))
-            ).then(() => ({
+            ]).then(() => ({
                 message: 'Then, {player} places {source} on top of their deck',
-                gameAction: GameActions.placeCard({ card: this, location: 'draw deck' })
+                gameAction: GameActions.returnCardToDeck({ card: this })
             }))
         });
     }

@@ -989,6 +989,7 @@ const Effects = {
     cannotBeReturnedToHand: cannotEffect('returnToHand'),
     cannotBeSacrificed: cannotEffect('sacrifice'),
     cannotBeReturnedToDeck: cannotEffect('returnCardToDeck'),
+    cannotBePlaced: cannotEffect('placeCard'),
     cannotIncreaseStrength: cannotEffect('increaseStrength'),
     cannotDecreaseStrength: cannotEffect('decreaseStrength'),
     cannotGainPower: cannotEffect('gainPower'),
