@@ -1,27 +1,28 @@
-import moment from 'moment';
-
 class TimeLimit {
     constructor(game, timeLimitInMinutes) {
         this.game = game;
         this.enabled = false;
-        this.active = false;
-        this.timeLeft = timeLimitInMinutes * 60;
-        this.timerStart = null;
         this.paused = false;
+        this.running = false;
+        this.timeLeft = timeLimitInMinutes * 60 * 1000;
+        this.startedAt = null;
+        this.timer = null;
 
-        this.game.on('onSetupFinished', () => {
-            this.enabled = true;
-            this.start();
-        });
-
-        this.game.on('onGameOver', () => {
-            this.stop();
-            this.enabled = false;
-        });
+        this.game.on('onSetupFinished', () => this.setEnabled(true));
+        this.game.on('onGameOver', () => this.setEnabled(false));
     }
 
     get isTimeLimitReached() {
-        return this.timeLeft <= 0;
+        return this.calculateTimeLeft() <= 0;
+    }
+
+    get active() {
+        return this.running;
+    }
+
+    setEnabled(enabled) {
+        this.enabled = enabled;
+        this.updateRunning();
     }
 
     togglePause() {
@@ -29,68 +30,60 @@ class TimeLimit {
             return;
         }
         this.paused = !this.paused;
-        if (this.paused) {
-            this.stop();
-        } else {
-            this.start();
-        }
+        this.updateRunning();
     }
 
-    start() {
-        if (!this.enabled) {
-            return;
-        }
-        if (!this.active) {
-            this.active = true;
-            this.timerStart = new Date();
-
-            this.timer = setInterval(() => {
-                this.checkForTimeLimitReached();
-            }, 1000);
-        }
-    }
-
-    stop() {
-        if (!this.enabled) {
-            return;
-        }
-        if (this.active) {
-            this.active = false;
-            clearInterval(this.timer);
-            delete this.timer;
+    updateRunning() {
+        const shouldRun = this.enabled && !this.paused;
+        if (shouldRun && !this.running) {
+            this.running = true;
+            this.startedAt = performance.now();
+            this.timer = setInterval(() => this.tick(), 1000);
+        } else if (!shouldRun && this.running) {
             this.timeLeft = this.calculateTimeLeft();
+            this.running = false;
+            clearInterval(this.timer);
+            this.timer = null;
+        }
+    }
+
+    tick() {
+        this.checkForTimeLimitReached();
+        if (this.running) {
+            this.game.requestClockSync();
         }
     }
 
     checkForTimeLimitReached() {
-        if (this.enabled && this.active && this.timer && this.timeLeft > 0) {
-            const timeLeft = this.calculateTimeLeft();
-            if (timeLeft === 0) {
-                this.stop();
-                this.game.timeLimitExpired();
-                this.enabled = false;
-                // Game state needs to explicitly be sent, as this method was triggered by a server-side timer
-                this.game.sendGameState();
-            }
+        if (!this.running || this.calculateTimeLeft() > 0) {
+            return;
         }
+        this.timeLeft = 0;
+        this.running = false;
+        clearInterval(this.timer);
+        this.timer = null;
+        this.game.timeLimitExpired();
+        this.enabled = false;
+        // Game state needs to explicitly be sent, as this method was triggered by a server-side timer
+        this.game.sendGameState();
     }
 
     calculateTimeLeft() {
-        // Calculate how much time is remaining
-        const timeEndTime = moment(this.timerStart).add(this.timeLeft, 'seconds');
-        const timeDifference = moment.duration(timeEndTime.diff(moment())).asSeconds();
-        const timeRemaining = Math.max(0, Math.round(timeDifference));
-
-        return timeRemaining;
+        if (!this.running) {
+            return this.timeLeft;
+        }
+        return Math.max(0, this.timeLeft - (performance.now() - this.startedAt));
     }
 
+    // Sent as the milliseconds remaining at this moment rather than as a server timestamp,
+    // so browsers never need to compare their own clock against the server's.
     getState() {
         this.checkForTimeLimitReached();
         return {
             active: this.active,
             paused: this.paused,
-            timerStart: this.timerStart,
-            timeLeft: this.timeLeft
+            running: this.running,
+            timeLeft: Math.round(this.calculateTimeLeft())
         };
     }
 }

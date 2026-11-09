@@ -21,18 +21,16 @@ const GameTimer = ({ className, player, isMe, side }) => {
         <ChessClock
             username={player.user.username}
             side={side}
-            active={player.chessClock.active}
             paused={player.chessClock.paused}
-            timerStart={player.chessClock.timerStart}
+            running={player.chessClock.running}
             timeLeft={player.chessClock.timeLeft}
             delayLeft={player.chessClock.delayLeft}
         />
     );
     const gameClock = currentGame.useGameTimeLimit && isMe && (
         <TimeLimitClock
-            active={currentGame.timeLimit.active}
             paused={currentGame.timeLimit.paused}
-            timerStart={currentGame.timeLimit.timerStart}
+            running={currentGame.timeLimit.running}
             timeLeft={currentGame.timeLimit.timeLeft}
         />
     );

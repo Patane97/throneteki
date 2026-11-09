@@ -58,6 +58,7 @@ import { randomUUID } from 'crypto';
 
 const MinResponseDelay = 1000;
 const MaxResponseDelay = 3000;
+const CLOCK_SYNC_INTERVAL = 15000;
 
 class Game extends EventEmitter {
     constructor(details, options = {}) {
@@ -1717,6 +1718,17 @@ class Game extends EventEmitter {
 
     sendGameState() {
         this.emit('sendGameState');
+    }
+
+    // Clocks call this from their server-side timers so browsers regularly pick up the exact time left,
+    // without every running clock in a multiplayer game sending its own copy of the state.
+    requestClockSync() {
+        const now = performance.now();
+        if (this.lastClockSync !== undefined && now - this.lastClockSync < CLOCK_SYNC_INTERVAL) {
+            return;
+        }
+        this.lastClockSync = now;
+        this.sendGameState();
     }
 
     activatePersistentEffects() {
