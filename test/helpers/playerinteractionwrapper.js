@@ -201,12 +201,11 @@ class PlayerInteractionWrapper {
         this.game.continue();
         this.checkUnserializableGameState();
 
-        // A card with a single usable action, or an event with one way to play it, asks for
-        // confirmation first. Card specs treat the click as using it; CardActionClick.spec.js and
-        // EventPlayConfirm.spec.js cover the confirmation itself.
+        // A card with a single usable action asks for confirmation first. Card specs treat the
+        // click as using it; CardActionClick.spec.js covers the confirmation itself.
         const prompt = this.currentPrompt();
         if (
-            [`Use ${card.name}?`, `Play ${card.name}?`].includes(prompt.menuTitle) &&
+            prompt.menuTitle === `Use ${card.name}?` &&
             prompt.buttons.length === 2 &&
             prompt.buttons[1].text === 'Cancel'
         ) {
@@ -214,29 +213,30 @@ class PlayerInteractionWrapper {
         }
     }
 
-    clickMenu(card, menuText) {
+    clickMenu(card, actionTitle) {
         if (typeof card === 'string') {
             card = this.findCardByName(card);
         }
 
-        var items = card.getMenu(this.player).filter((item) => item.text === menuText);
+        const action = card.abilities.actions.find(
+            (action) =>
+                action.title === actionTitle &&
+                action.allowPlayer(this.player) &&
+                action.allowCardClick()
+        );
 
-        if (items.length === 0) {
-            throw new Error(`Card ${card.name} does not have a menu item "${menuText}"`);
+        if (!action) {
+            throw new Error(`Card ${card.name} does not have an action "${actionTitle}"`);
         }
 
-        this.game.menuItemClick(this.player.name, card.uuid, items[0]);
+        if (!action.meetsRequirements(action.createContext(this.player))) {
+            return;
+        }
+
+        this.game.cardClicked(this.player.name, card.uuid);
         this.game.continue();
         this.checkUnserializableGameState();
-    }
-
-    hasEnabledMenu(card, menuText) {
-        if (typeof card === 'string') {
-            card = this.findCardByName(card);
-        }
-
-        const items = card.getMenu(this.player).filter((item) => item.text === menuText);
-        return items.some((item) => !item.disabled);
+        this.clickPrompt(actionTitle);
     }
 
     /**
